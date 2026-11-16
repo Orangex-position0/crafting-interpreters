@@ -44,3 +44,9 @@ java -cp jlox Lox path/to/script.lox
 - [Crafting Interpreters 在线书籍](https://craftinginterpreters.com/contents.html)
 - [第二部分：A Tree-Walk Interpreter](https://craftinginterpreters.com/a-tree-walk-interpreter.html)
 - [作者的源码仓库](https://github.com/munificent/craftinginterpreters)
+
+## 许可证
+
+本项目采用 [MIT License](LICENSE)。基于书中源码的实现保留原作者 Robert Nystrom 的版权声明，本项目新增内容署名为 Orange-position0。
+
+书籍原文、插图及网站素材不属于本项目 MIT 授权范围，其使用须遵守[原项目许可证](https://github.com/munificent/craftinginterpreters/blob/master/LICENSE)。
