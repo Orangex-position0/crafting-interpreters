@@ -1,0 +1,65 @@
+name: 自动创建章节 PR
+
+on:
+  push:
+    branches:
+      - 'part-*/chapter-*'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: chapter-pr-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  create-draft:
+    name: 创建章节草稿
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BRANCH: ${{ github.ref_name }}
+      BASE: ${{ github.event.repository.default_branch }}
+    steps:
+      - name: 检查并创建 Draft PR
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$BRANCH" =~ ^part-([0-9]{2})/chapter-([0-9]{2})-([a-z0-9]+(-[a-z0-9]+)*)$ ]]; then
+            echo "章节分支名称不符合约定：$BRANCH" >&2
+            exit 1
+          fi
+          part="${BASH_REMATCH[1]}"
+          chapter="${BASH_REMATCH[2]}"
+          slug="${BASH_REMATCH[3]}"
+
+          # 已关闭或已合并的 PR 也视为已创建，避免反复开启同一章。
+          count=$(gh pr list --head "$BRANCH" --base "$BASE" --state all --json number --jq 'length')
+          if [[ "$count" != "0" ]]; then
+            echo "该章节已有 PR，跳过创建。"
+            exit 0
+          fi
+
+          ahead=$(gh api "repos/$GH_REPO/compare/$BASE...$BRANCH" --jq '.ahead_by')
+          if [[ "$ahead" == "0" ]]; then
+            echo "该章节没有待合并提交，跳过创建。"
+            exit 0
+          fi
+
+          body=$(printf '%s\n' \
+            '## 章节信息' \
+            "- Part ${part}，第 ${chapter} 章：${slug//-/ }" \
+            "- 分支：\`$BRANCH\`" \
+            '' \
+            '## 完成检查' \
+            '- [ ] 本章计划内容已完成' \
+            '- [ ] 已补充本章改动摘要与验证结果' \
+            '- [ ] CI 检查通过' \
+            '' \
+            '开发期间保持草稿；确认本章完成后再转为 Ready，并启用自动合并。' \
+            '合并后保留章节分支。')
+          gh pr create --draft --base "$BASE" --head "$BRANCH" \
+            --title "第 $((10#$chapter)) 章（Part ${part}）：${slug//-/ }" \
+            --body "$body"
